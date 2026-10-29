@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weekly Basketball Run Sign-Up</title>
+  <title>BigPapiBallers Run Sign-Up</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; background: #f9f9f9; color: #222; }
-    h2 { border-bottom: 2px solid #222; padding-bottom: 8px; }
+    h2 { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 4px; }
+    .date-banner { font-size: 1.1rem; color: #555; font-weight: 600; margin-bottom: 20px; }
     form { display: flex; gap: 8px; margin-bottom: 20px; }
     input, select, button { padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
     input[type="text"] { flex-grow: 1; }
-    button { background: #000; color: #fff; cursor: pointer; border: none; }
+    button { background: #000; color: #fff; cursor: pointer; border: none; font-weight: bold; }
     button:hover { background: #333; }
     ul { list-style: none; padding: 0; }
     li { background: #fff; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
@@ -20,7 +21,8 @@
 </head>
 <body>
 
-  <h2>🏀 Weekly Run Sign-Up</h2>
+  <h2>🏀 BigPapiBallers Run</h2>
+  <div class="date-banner">Next Run: <span id="run-date-display">Loading date...</span></div>
 
   <form id="signup-form">
     <input type="text" id="player-name" placeholder="Your Name" required />
@@ -33,12 +35,39 @@
 
   <h3>Roster (<span id="count">0</span>)</h3>
   <ul id="roster">
-    <li>Loading list...</li>
+    <li>Loading roster...</li>
   </ul>
 
   <script>
-    // ⚠️ Replace with your deployed Google Apps Script URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz55n3h34ixXn0b-ncMQ2aWh9eFR_7FH63qNnSWmayEI50tXzohcw8Epo4pVXqrTxoMww/exec";
+    // ⚠️ Ensure your active Google Apps Script Web App URL is pasted here
+    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    // Calculates the upcoming Wednesday formatted as YYYY-MM-DD
+    function getNextWednesday() {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sun, 3 = Wed, 4 = Thu
+      let daysUntilWednesday = (3 - dayOfWeek + 7) % 7;
+
+      // If today is Wednesday, stay on today; if Thursday (4) or later, jump to next week
+      if (daysUntilWednesday === 0 && today.getHours() >= 22) { 
+        daysUntilWednesday = 7; // After 10 PM on Wednesday, roll over to next week
+      }
+
+      const nextWed = new Date(today);
+      nextWed.setDate(today.getDate() + daysUntilWednesday);
+      
+      const year = nextWed.getFullYear();
+      const month = String(nextWed.getMonth() + 1).padStart(2, '0');
+      const day = String(nextWed.getDate()).padStart(2, '0');
+
+      return {
+        formattedISO: `${year}-${month}-${day}`,
+        displayString: nextWed.toLocaleDateString('en-US', { weekday: 'long', month: 'numeric', day: 'numeric', year: 'numeric' })
+      };
+    }
+
+    const currentRun = getNextWednesday();
+    document.getElementById("run-date-display").innerText = currentRun.displayString;
 
     async function loadRoster() {
       try {
@@ -48,16 +77,30 @@
         rosterEl.innerHTML = "";
         
         let playingCount = 0;
+        const playerMap = new Map();
 
-        // Show latest entries (last entry per person or chronological sequence)
-        data.reverse().forEach(row => {
-          const [timestamp, name, status] = row;
+        // Filter entries matching the target Wednesday
+        data.forEach(row => {
+          const [timestamp, name, status, runDate] = row;
           if (!name) return;
 
-          if (status === "Playing") playingCount++;
+          // Match entry against current target run date
+          if (runDate === currentRun.formattedISO) {
+            playerMap.set(name.toLowerCase(), { name, status });
+          }
+        });
+
+        if (playerMap.size === 0) {
+          rosterEl.innerHTML = "<li>No sign-ups yet for this run. Be the first!</li>";
+          document.getElementById("count").innerText = "0";
+          return;
+        }
+
+        playerMap.forEach(player => {
+          if (player.status === "Playing") playingCount++;
 
           const li = document.createElement("li");
-          li.innerHTML = `<span><strong>${name}</strong></span> <span class="status-${status.toLowerCase()}">${status}</span>`;
+          li.innerHTML = `<span><strong>${player.name}</strong></span> <span class="status-${player.status.toLowerCase()}">${player.status}</span>`;
           rosterEl.appendChild(li);
         });
 
@@ -74,23 +117,22 @@
 
       const payload = {
         name: nameInput.value.trim(),
-        status: statusInput.value
+        status: statusInput.value,
+        runDate: currentRun.formattedISO
       };
 
       nameInput.value = "";
       
       await fetch(SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors", // Bypasses browser CORS restrictions for Apps Script
+        mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      // Reload list after brief delay
       setTimeout(loadRoster, 1000);
     });
 
-    // Initial Load
     loadRoster();
   </script>
 </body>
