@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekly Basketball Run Sign-Up</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; background: #f9f9f9; color: #222; }
+    h2 { border-bottom: 2px solid #222; padding-bottom: 8px; }
+    form { display: flex; gap: 8px; margin-bottom: 20px; }
+    input, select, button { padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+    input[type="text"] { flex-grow: 1; }
+    button { background: #000; color: #fff; cursor: pointer; border: none; }
+    button:hover { background: #333; }
+    ul { list-style: none; padding: 0; }
+    li { background: #fff; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .status-playing { color: #2e7d32; font-weight: bold; }
+    .status-out { color: #c62828; }
+  </style>
+</head>
+<body>
+
+  <h2>🏀 Weekly Run Sign-Up</h2>
+
+  <form id="signup-form">
+    <input type="text" id="player-name" placeholder="Your Name" required />
+    <select id="player-status">
+      <option value="Playing">In</option>
+      <option value="Out">Out</option>
+    </select>
+    <button type="submit">Submit</button>
+  </form>
+
+  <h3>Roster (<span id="count">0</span>)</h3>
+  <ul id="roster">
+    <li>Loading list...</li>
+  </ul>
+
+  <script>
+    // ⚠️ Replace with your deployed Google Apps Script URL
+    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    async function loadRoster() {
+      try {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        const rosterEl = document.getElementById("roster");
+        rosterEl.innerHTML = "";
+        
+        let playingCount = 0;
+
+        // Show latest entries (last entry per person or chronological sequence)
+        data.reverse().forEach(row => {
+          const [timestamp, name, status] = row;
+          if (!name) return;
+
+          if (status === "Playing") playingCount++;
+
+          const li = document.createElement("li");
+          li.innerHTML = `<span><strong>${name}</strong></span> <span class="status-${status.toLowerCase()}">${status}</span>`;
+          rosterEl.appendChild(li);
+        });
+
+        document.getElementById("count").innerText = playingCount;
+      } catch (err) {
+        document.getElementById("roster").innerHTML = "<li>Failed to load roster.</li>";
+      }
+    }
+
+    document.getElementById("signup-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById("player-name");
+      const statusInput = document.getElementById("player-status");
+
+      const payload = {
+        name: nameInput.value.trim(),
+        status: statusInput.value
+      };
+
+      nameInput.value = "";
+      
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", // Bypasses browser CORS restrictions for Apps Script
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      // Reload list after brief delay
+      setTimeout(loadRoster, 1000);
+    });
+
+    // Initial Load
+    loadRoster();
+  </script>
+</body>
+</html>
