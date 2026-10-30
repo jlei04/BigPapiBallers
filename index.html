@@ -42,15 +42,13 @@
     // ⚠️ Ensure your active Google Apps Script Web App URL is pasted here
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz55n3h34ixXn0b-ncMQ2aWh9eFR_7FH63qNnSWmayEI50tXzohcw8Epo4pVXqrTxoMww/exec";
 
-    // Calculates the upcoming Wednesday formatted as YYYY-MM-DD
     function getNextWednesday() {
       const today = new Date();
-      const dayOfWeek = today.getDay(); // 0 = Sun, 3 = Wed, 4 = Thu
+      const dayOfWeek = today.getDay(); 
       let daysUntilWednesday = (3 - dayOfWeek + 7) % 7;
 
-      // If today is Wednesday, stay on today; if Thursday (4) or later, jump to next week
       if (daysUntilWednesday === 0 && today.getHours() >= 22) { 
-        daysUntilWednesday = 7; // After 10 PM on Wednesday, roll over to next week
+        daysUntilWednesday = 7; 
       }
 
       const nextWed = new Date(today);
@@ -79,14 +77,13 @@
         let playingCount = 0;
         const playerMap = new Map();
 
-        // Filter entries matching the target Wednesday
+        // Data is now clean objects: { name, status, runDate }
         data.forEach(row => {
-          const [timestamp, name, status, runDate] = row;
-          if (!name) return;
+          if (!row.name) return;
 
           // Match entry against current target run date
-          if (runDate === currentRun.formattedISO) {
-            playerMap.set(name.toLowerCase(), { name, status });
+          if (row.runDate === currentRun.formattedISO || !row.runDate) {
+            playerMap.set(row.name.toLowerCase(), { name: row.name, status: row.status });
           }
         });
 
@@ -106,6 +103,7 @@
 
         document.getElementById("count").innerText = playingCount;
       } catch (err) {
+        console.error(err);
         document.getElementById("roster").innerHTML = "<li>Failed to load roster.</li>";
       }
     }
@@ -130,7 +128,7 @@
         body: JSON.stringify(payload)
       });
 
-      setTimeout(loadRoster, 1000);
+      setTimeout(loadRoster, 1200);
     });
 
     loadRoster();
